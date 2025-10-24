@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =======================
+// ENUMS
+// =======================
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  UNISEX
+  KIDS
+}
+
+// =======================
+// MODELS
+// =======================
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  phone     String?
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+}
+
+// ---------- Category ----------
+model MainCategory {
+  id            Int           @id @default(autoincrement())
+  name          String        @unique
+  subCategories SubCategory[]
+  products      Product[]
+}
+
+model SubCategory {
+  id             Int          @id @default(autoincrement())
+  name           String
+  mainCategory   MainCategory @relation(fields: [mainCategoryId], references: [id])
+  mainCategoryId Int
+  products       Product[]
+
+  @@unique([name, mainCategoryId])
+}
+
+// ---------- Product ----------
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  brand       String?
+  gender      Gender   @default(UNISEX)
+  material    String?
+  basePrice   Float
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  mainCategory   MainCategory @relation(fields: [mainCategoryId], references: [id])
+  mainCategoryId Int
+  subCategory    SubCategory? @relation(fields: [subCategoryId], references: [id])
+  subCategoryId  Int?
+
+  variantColors ProductVariantColor[]
+  images        ProductImage[] // ảnh đại diện + gallery
+}
+
+// ---------- Variants ----------
+model ProductVariantColor {
+  id        Int     @id @default(autoincrement())
+  color     String
+  product   Product @relation(fields: [productId], references: [id])
+  productId Int
+
+  images ProductImage[]
+  sizes  ProductVariantSize[]
+
+  createdAt DateTime @default(now())
+}
+
+model ProductVariantSize {
+  id             Int                 @id @default(autoincrement())
+  size           String
+  price          Float
+  stock          Int                 @default(0)
+  sku            String?             @unique
+  colorVariant   ProductVariantColor @relation(fields: [colorVariantId], references: [id])
+  colorVariantId Int
+  createdAt      DateTime            @default(now())
+}
+
+// ---------- Images ----------
+model ProductImage {
+  id     Int     @id @default(autoincrement())
+  url    String
+  isMain Boolean @default(false)
+
+  product   Product? @relation(fields: [productId], references: [id])
+  productId Int?
+
+  colorVariant   ProductVariantColor? @relation(fields: [variantColorId], references: [id])
+  variantColorId Int?
+
+  createdAt DateTime @default(now())
+}
