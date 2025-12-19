@@ -1,0 +1,439 @@
+// ===========================================================
+// 📦 Prisma Schema — Hệ thống bán hàng (CHQA)
+// ✅ Bổ sung: Promotion (Khuyến mãi) áp dụng theo Product + Color + Size (đúng UI FE lúc nãy)
+// ===========================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===========================================================
+// ENUMS
+// ===========================================================
+enum Role {
+  USER
+  ADMIN
+  MANAGER
+  SHIPPER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  UNISEX
+}
+
+enum UserGender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPING
+  COMPLETED
+  CANCELLED
+  SHIPPINGFAILED
+}
+
+enum PaymentMethod {
+  COD
+  ZALOPAY
+  VNPAY
+  PAYPAL
+}
+
+// 🔹 Trạng thái thanh toán
+enum PaymentStatus {
+  PENDING   // tạo đơn, chưa thanh toán / chờ thanh toán
+  PAID      // đã thanh toán đủ
+  FAILED    // thanh toán thất bại
+  REFUNDED  // đã hoàn tiền
+}
+
+enum ShippingMethod {
+  STANDARD
+  EXPRESS
+}
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+}
+
+// ✅ Loại áp dụng KM
+enum PromotionScope {
+  ALL_SIZES      // áp dụng cho toàn bộ size của 1 biến thể màu (UI: "Toàn bộ sizes")
+  SPECIFIC_SIZES // áp dụng cho một số size (UI: "Chọn size cụ thể")
+}
+
+// ✅ Trạng thái KM (tuỳ bạn dùng hay không, FE có thể tự tính theo date)
+enum PromotionStatus {
+  SCHEDULED // chưa tới ngày
+  ACTIVE    // đang diễn ra
+  EXPIRED   // hết hạn
+  DISABLED  // tắt thủ công
+}
+
+// ===========================================================
+// USER & ĐỊA CHỈ & YÊU THÍCH
+// ===========================================================
+model User {
+  id             String          @id @default(cuid())
+  name           String
+  email          String          @unique
+  password       String
+  role           Role            @default(USER)
+  createdAt      DateTime        @default(now())
+  status         UserStatus      @default(ACTIVE)
+  gender         UserGender?
+  birthDate      DateTime?
+
+  addresses      UserAddress[]
+  favorites      Favorite[]
+  cart           Cart?
+  orders         Order[]
+  recentlyViewed RecentlyViewed[]
+  reviews        Review[]
+}
+
+model UserAddress {
+  id             String   @id @default(cuid())
+  userId         String
+  label          String?
+  recipientName  String
+  recipientPhone String
+  address        String
+  province       String?
+  ward           String?
+  isDefault      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+// ===========================================================
+// DANH MỤC & SẢN PHẨM
+// ===========================================================
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  imageUrl  String?
+  gender    Gender
+  products  Product[]
+}
+
+model Product {
+  id             String                @id @default(cuid())
+  name           String
+  slug           String                @unique
+  description    String?
+  basePrice      Float                 @default(0)
+  costPrice      Float                 @default(0)
+  isActive       Boolean               @default(true)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  viewCount      Int                   @default(0)
+  soldCount      Int                   @default(0)
+
+  keywords       String[]              @default([])
+
+  categoryId     String
+  category       Category              @relation(fields: [categoryId], references: [id])
+
+  images         ProductImage[]
+  variantColors  ProductVariantColor[]
+  favorites      Favorite[]
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+  recentlyViewed RecentlyViewed[]
+  reviews        Review[]
+
+  // ✅ NEW: khuyến mãi gắn theo sản phẩm (quản trị / lọc / list)
+  promotions     Promotion[]
+}
+
+// ===========================================================
+// BIẾN THỂ MÀU / SIZE
+// ===========================================================
+model ProductVariantColor {
+  id          String               @id @default(cuid())
+  color       String
+  productId   String
+  createdAt   DateTime             @default(now())
+
+  product     Product              @relation(fields: [productId], references: [id])
+  images      ProductImage[]
+  sizes       ProductVariantSize[]
+
+  // ✅ NEW: khuyến mãi theo biến thể màu
+  promotions  Promotion[]
+
+  @@index([productId])
+}
+
+model ProductVariantSize {
+  id             String              @id @default(cuid())
+  size           String
+  price          Float
+  stock          Int                 @default(0)
+  colorVariantId String
+  createdAt      DateTime            @default(now())
+
+  colorVariant   ProductVariantColor @relation(fields: [colorVariantId], references: [id])
+
+  // ✅ NEW: khuyến mãi theo size
+  promotions     PromotionSize[]
+
+  @@index([colorVariantId])
+}
+
+model ProductImage {
+  id             String               @id @default(cuid())
+  url            String
+  isMain         Boolean              @default(false)
+  productId      String?
+  variantColorId String?
+  createdAt      DateTime             @default(now())
+
+  product        Product?             @relation(fields: [productId], references: [id])
+  colorVariant   ProductVariantColor? @relation(fields: [variantColorId], references: [id])
+
+  @@index([productId])
+  @@index([variantColorId])
+}
+
+// ===========================================================
+// ✅ KHUYẾN MÃI (Promotion) — đúng logic FE bạn làm
+// - Áp dụng theo: product + colorVariant
+// - Nếu ALL_SIZES: tự tạo PromotionSize cho toàn bộ sizes trong colorVariant
+// - Nếu SPECIFIC_SIZES: chỉ tạo PromotionSize cho sizes được chọn
+// ===========================================================
+model Promotion {
+  id             String          @id @default(cuid())
+
+  // liên kết
+  productId      String
+  colorVariantId String
+
+  // dữ liệu khuyến mãi
+  scope          PromotionScope  @default(ALL_SIZES)
+  promotionPrice Float           // FE: promotionPrice
+  startDate      DateTime        // FE: startDate
+  endDate        DateTime        // FE: endDate
+
+  // optional: quản trị
+  status         PromotionStatus @default(SCHEDULED)
+  isActive       Boolean         @default(true) // tắt/bật thủ công
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // relations
+  product        Product              @relation(fields: [productId], references: [id])
+  colorVariant   ProductVariantColor  @relation(fields: [colorVariantId], references: [id])
+  sizes          PromotionSize[]
+
+  @@index([productId])
+  @@index([colorVariantId])
+  // 1 biến thể màu có thể có nhiều KM theo thời gian (tạo mới mỗi campaign)
+  @@index([startDate, endDate])
+}
+
+model PromotionSize {
+  id        String            @id @default(cuid())
+
+  promotionId String
+  sizeId      String
+
+  // giá KM cho size (mặc định = promotion.promotionPrice, nhưng để float cho phép override sau này)
+  price       Float
+  createdAt   DateTime        @default(now())
+
+  promotion   Promotion       @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  size        ProductVariantSize @relation(fields: [sizeId], references: [id], onDelete: Cascade)
+
+  @@index([promotionId])
+  @@index([sizeId])
+  // tránh trùng 1 size trong cùng 1 campaign
+  @@unique([promotionId, sizeId])
+}
+
+// ===========================================================
+// YÊU THÍCH
+// ===========================================================
+model Favorite {
+  id         String   @id @default(cuid())
+  userId     String
+  productId  String
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id])
+  product    Product  @relation(fields: [productId], references: [id])
+
+  @@unique([userId, productId])
+}
+
+// ===========================================================
+// GIỎ HÀNG & ĐƠN HÀNG
+// ===========================================================
+model Cart {
+  id         String      @id @default(cuid())
+  userId     String
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id])
+  items      CartItem[]
+
+  @@unique([userId])
+}
+
+model CartItem {
+  id          String   @id @default(cuid())
+  cartId      String
+  productId   String
+  color       String?
+  size        String?
+  quantity    Int       @default(1)
+  price       Float     @default(0)
+  createdAt   DateTime  @default(now())
+
+  cart        Cart      @relation(fields: [cartId], references: [id])
+  product     Product   @relation(fields: [productId], references: [id])
+
+  @@index([cartId])
+  @@index([productId])
+}
+
+// ===========================================================
+// ĐƠN HÀNG (Order)
+// ===========================================================
+model Order {
+  id              String         @id @default(cuid())
+  userId          String
+  totalAmount     Float
+  shippingFee     Float           @default(0)
+
+  status          OrderStatus     @default(PENDING)
+  paymentMethod   PaymentMethod
+  paymentStatus   PaymentStatus   @default(PENDING)
+  shippingMethod  ShippingMethod  @default(STANDARD)
+
+  recipientName   String
+  recipientPhone  String
+  shippingAddress String
+  province        String
+  ward            String
+  note            String?
+
+  deliveredAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User       @relation(fields: [userId], references: [id])
+  items           OrderItem[]
+  history         OrderHistory[]
+}
+
+model OrderHistory {
+  id        String      @id @default(cuid())
+  orderId   String
+  status    OrderStatus
+  note      String?
+  imageUrl  String?
+  createdAt DateTime @default(now())
+
+  order     Order      @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  productId   String
+  color       String?
+  size        String?
+  quantity    Int
+  price       Float
+  createdAt   DateTime @default(now())
+
+  order       Order    @relation(fields: [orderId], references: [id])
+  product     Product  @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+// ===========================================================
+// ⚙️ STORE SETTINGS
+// ===========================================================
+model StoreSetting {
+  id                       String   @id @default(cuid())
+  storeName                String   @default("Cửa hàng CHQA")
+  address                  String
+  latitude                 Float?
+  longitude                Float?
+  lowStockThreshold        Int      @default(5)
+  normalShippingFee        Float    @default(15000)
+  expressRatePerKm         Float    @default(8000)
+  maxExpressDistanceKm     Float    @default(30)
+  enableExpress            Boolean  @default(true)
+  enableFreeShipByTotal    Boolean  @default(false)
+  enableFreeShipByQuantity Boolean  @default(false)
+  freeShipMinTotal         Float?   @default(500000)
+  freeShipMinQuantity      Int?     @default(3)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+}
+
+// ===========================================================
+// 👀 RECENTLY VIEWED
+// ===========================================================
+model RecentlyViewed {
+  id         String   @id @default(cuid())
+  userId     String
+  productId  String
+  viewedAt   DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id])
+  product    Product  @relation(fields: [productId], references: [id])
+
+  @@unique([userId, productId])
+}
+
+// ===========================================================
+// ⭐ PRODUCT REVIEW (ĐÁNH GIÁ SẢN PHẨM)
+// ===========================================================
+model Review {
+  id          String   @id @default(cuid())
+  userId      String
+  productId   String
+
+  rating      Int
+  content     String?
+  images      String[]  @default([])
+
+  isApproved  Boolean   @default(true)
+  adminReply  String?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user        User      @relation(fields: [userId], references: [id])
+  product     Product   @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@index([userId])
+  @@unique([userId, productId])
+}
