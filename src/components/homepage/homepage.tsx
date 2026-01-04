@@ -6,17 +6,17 @@ import RecentlyViewedProducts from "../recently-view/recently-view";
 export default async function HomePageComponent () {
    return (
 <main>
-<section className="relative h-[600px] overflow-hidden">
+<section className="relative overflow-hidden">
   <img
-    src="/banner.webp"
+    src="/banner.png"
     alt="Banner"
-    className="absolute inset-0 w-full h-full object-cover"
+    className="custom-container w-full h-full  "
   />
 
   {/* Overlay mờ để chữ dễ đọc */}
-  <div className="absolute inset-0 bg-black/30" />
+  <div className="absolute inset-0 " />
 
-  <div className="custom-container mx-auto px-4 h-full flex items-center relative z-10">
+  {/* <div className="custom-container mx-auto px-4 h-full flex items-center relative z-10">
     <div className="max-w-2xl space-y-6 text-white">
       <div className="inline-block px-4 py-2 bg-white/20 backdrop-blur-lg rounded-full text-sm font-semibold mb-4">
         Bộ Sưu Tập Mới Thu Đông 2024
@@ -40,7 +40,7 @@ export default async function HomePageComponent () {
         </button>
       </div>
     </div>
-  </div>
+  </div> */}
 </section>
 
 

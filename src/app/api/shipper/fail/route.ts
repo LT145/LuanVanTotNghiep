@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   await prisma.orderHistory.create({
     data: {
       orderId,
-      status: "FAILED",
+      status: "SHIPPINGFAILED",
       note: reason,
     },
   });

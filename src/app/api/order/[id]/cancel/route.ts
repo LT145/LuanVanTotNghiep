@@ -79,7 +79,6 @@ export async function POST(
       where: { id },
       data: {
         status: OrderStatus.CANCELLED,
-        cancelReason: reason.trim(),
         // nếu có PaymentStatus thì set ở đây, ví dụ:
         // paymentStatus: PaymentStatus.REFUNDED,
       },

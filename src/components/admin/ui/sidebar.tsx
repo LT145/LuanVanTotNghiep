@@ -44,7 +44,7 @@ const navItems: NavItem[] = [
     icon: <Package className="h-5 w-5" />,
     children: [
       { id: "products", label: "Tất cả sản phẩm", icon: <Package className="h-4 w-4" /> },
-      { id: "products-manage", label: "Quản lý sản phẩm", icon: <Settings className="h-4 w-4" /> },
+      //{ id: "products-manage", label: "Quản lý sản phẩm", icon: <Settings className="h-4 w-4" /> },
       { id: "products-add", label: "Thêm sản phẩm", icon: <PlusCircle className="h-4 w-4" /> },
       { id: "inventory", label: "Kho hàng", icon: <Warehouse className="h-4 w-4" /> },
     ],
@@ -74,6 +74,11 @@ const navItems: NavItem[] = [
     label: "Tài khoản",
     icon: <Users className="h-5 w-5" />,
   },
+    {
+    id: "settings",
+    label: "Cài đặt",
+    icon: <Settings className="h-5 w-5" />,
+  }
 ]
 
 // 🎯 QUYỀN MENU THEO ROLE

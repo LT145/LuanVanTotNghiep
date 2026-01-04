@@ -11,6 +11,8 @@ import Orders from "@/components/admin/order/orders";
 import AdminUsersPage from "@/components/admin/user/user-manager";
 import PromotionManager from "@/components/admin/promotion-manager/promotion-manager";
 import AdminReturnsPage from "@/components/admin/returns/returns";
+import InventoryManager from "@/components/admin/inventory/inventory-manager";
+import StoreSettingsPage from "@/components/admin/store-setting/store-setting";
 
 type Role = "ADMIN" | "MANAGER" | "SHIPPER" | "USER";
 
@@ -76,10 +78,12 @@ export default function AdminPage() {
 
       case "promotions":
         return <PromotionManager />;
-
+      case "inventory":
+        return <InventoryManager />;
       case "returns":
         return <AdminReturnsPage />;
-
+      case "settings":
+        return <StoreSettingsPage />;
       default:
         return <Dashboard />;
     }
