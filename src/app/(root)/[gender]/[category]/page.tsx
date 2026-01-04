@@ -19,10 +19,11 @@ import { Metadata } from "next";
 
 
 export const metadata: Metadata = {
-  title: "Now Showing - Movie Ticket Booking",
-  description: "Browse all movies currently showing in theaters",
-  
+  title: "Cửa Hàng Quần Áo",
+  description:
+    "Mua sắm quần áo trực tuyến, xem các sản phẩm mới và nhận ưu đãi hấp dẫn cho các mặt hàng yêu thích.",
 };
+
 
 const ProductCategory = async ({
   params

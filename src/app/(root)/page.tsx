@@ -2,9 +2,9 @@ import  HomePageComponent   from "@/components/homepage/homepage";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Galaxy Booking - Your Ultimate Cinema Experience",
+  title: "Cửa Hàng Quần Áo",
   description:
-    "Book movie tickets online, browse now showing and upcoming movies, and enjoy exclusive deals for your favorite films.",
+    "Mua sắm quần áo trực tuyến, xem các sản phẩm mới và nhận ưu đãi hấp dẫn cho các mặt hàng yêu thích.",
 };
 
 const HomePage = () => {
