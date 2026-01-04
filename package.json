@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "set BASELINE_BROWSER_MAPPING_DISABLE_WARNINGS=1 && next dev",
-    "build": "set BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA=1 && next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint"
   },
